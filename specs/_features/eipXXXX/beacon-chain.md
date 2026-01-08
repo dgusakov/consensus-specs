@@ -98,7 +98,7 @@ class ExecutionRequests(Container):
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
     # [New in EIPXXXX]
-    set_sweep_threshold_requests: List[SetSweepThresholdRequest, MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD]
+    sweep_thresholds: List[SetSweepThresholdRequest, MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD]
 ```
 
 ### New containers
@@ -408,7 +408,7 @@ def process_execution_payload(
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
     # [New in EIPXXXX]
-    for_ops(requests.set_sweep_threshold_requests, process_set_sweep_threshold_request)
+    for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 
     # Queue the builder payment
     payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
