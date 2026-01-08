@@ -156,6 +156,29 @@ def get_effective_sweep_threshold(validator: Validator, sweep_threshold: Gwei) -
 
 ### Block processing
 
+#### Execution payload
+
+##### Modified `get_execution_requests_list`
+
+*Note*: Encodes execution requests as defined by
+[EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
+
+```python
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
+    requests = [
+        (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
+        (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
+        (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        (SWEEP_THRESHOLD_REQUEST_TYPE, execution_requests.sweep_thresholds),
+    ]
+
+    return [
+        request_type + ssz_serialize(request_data)
+        for request_type, request_data in requests
+        if len(request_data) != 0
+    ]
+```
+
 #### Withdrawals
 
 ##### Modified `get_expected_withdrawals`
