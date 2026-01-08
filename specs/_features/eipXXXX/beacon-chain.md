@@ -5,6 +5,10 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
+- [Preset](#preset)
+  - [Execution](#execution)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
@@ -20,6 +24,8 @@
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
+    - [Execution payload](#execution-payload)
+      - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Operations](#operations)
       - [New `process_set_sweep_threshold_request`](#new-process_set_sweep_threshold_request)
   - [Execution payload processing](#execution-payload-processing)
@@ -34,6 +40,22 @@ This upgrade adds transaction execution to the beacon chain as part of the
 eipXXXX upgrade.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
+
+## Constants
+
+### New execution layer triggered request type
+
+| Name                           | Value            |
+| ----------------------------   | ---------------- |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x04')` |
+
+## Preset
+
+### Execution
+
+| Name                                           | Value                     | Description                                                                                         |
+| ----------------------------------------       | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)     | *[New in EIPXXXX]* Maximum number of execution layer set sweep threshold requests in each payload   |
 
 ## Containers
 
