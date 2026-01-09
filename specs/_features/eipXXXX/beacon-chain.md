@@ -21,6 +21,8 @@
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc)
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
+  - [Validator registry](#validator-registry)
+    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
@@ -180,6 +182,27 @@ def get_effective_sweep_threshold(validator: Validator, sweep_threshold: Gwei) -
         return sweep_threshold
     else:
         return get_max_effective_balance(validator)
+```
+
+### Validator registry
+
+#### Modified `add_validator_to_registry`
+
+*Note*: The function `add_validator_to_registry` is modified to initialize the item in the `validator_sweep_thresholds` list.
+
+```python
+def add_validator_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, amount)
+    # [New in EIPXXXX]
+    set_or_append_list(state.validator_sweep_thresholds, index, Gwei(0))
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, uint64(0))
 ```
 
 ## Beacon chain state transition function
