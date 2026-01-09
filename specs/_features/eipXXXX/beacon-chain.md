@@ -369,7 +369,10 @@ def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_
         state.validator_sweep_thresholds[index] = 0
         return
 
-    # Ensure threshold is not lower than balance
+    # Prevent validators from gaming the sweep cycle by setting thresholds below current balance.
+    # This ensures validators cannot bypass the partial withdrawal queue to perform immediate withdrawals.
+    # To lower a threshold, validators must first request a partial withdrawal, wait for processing,
+    # then set the desired threshold.
     if threshold < state.balances[index]:
         return
 
