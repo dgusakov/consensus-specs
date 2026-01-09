@@ -37,8 +37,9 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of the
-eipXXXX upgrade.
+This upgrade adds custom validator sweep threshold functionality to the beacon chain as part of the eipXXXX upgrade.
+
+This document specifies the beacon chain changes required to support these custom thresholds. The upgrade introduces a new request type within the execution payload, triggered by execution layer transactions, which updates a validator's sweep configuration in the beacon state. This allows validators to control their balance withdrawals more precisely.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
