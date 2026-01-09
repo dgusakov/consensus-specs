@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
+  - [Sweep threshold validation](#sweep-threshold-validation)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Containers](#containers)
@@ -48,6 +49,12 @@ eipXXXX upgrade.
 | Name                           | Value            |
 | ----------------------------   | ---------------- |
 | `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x04')` |
+
+### Sweep threshold validation
+
+| Name                        | Value                                  |
+| --------------------------- | -------------------------------------- |
+| `SWEEP_THRESHOLD_QUOTIENT`  | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 
 ## Preset
 
