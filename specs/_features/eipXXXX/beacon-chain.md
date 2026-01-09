@@ -155,7 +155,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei, swe
     # [Modified in EIPXXXX]
     effective_sweep_threshold = get_effective_sweep_threshold(validator, sweep_threshold)
     # [Modified in EIPXXXX]
-    has_effective_sweep_threshold = validator.effective_balance == effective_sweep_threshold
+    has_effective_sweep_threshold = validator.effective_balance >= effective_sweep_threshold
     # [Modified in EIPXXXX]
     has_excess_balance = balance > effective_sweep_threshold
     return (
