@@ -222,6 +222,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        # [New in EIPXXXX]
         (SWEEP_THRESHOLD_REQUEST_TYPE, execution_requests.sweep_thresholds),
     ]
 
