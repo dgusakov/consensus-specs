@@ -51,7 +51,7 @@ This document specifies the beacon chain changes required to support these custo
 
 | Name                           | Value            |
 | ----------------------------   | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x04')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x03')` |
 
 ### Sweep threshold validation
 
