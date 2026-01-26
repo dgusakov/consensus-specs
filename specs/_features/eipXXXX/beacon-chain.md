@@ -55,9 +55,10 @@ This document specifies the beacon chain changes required to support these custo
 
 ### Sweep threshold validation
 
-| Name                        | Value                                  |
-| --------------------------- | -------------------------------------- |
-| `SWEEP_THRESHOLD_QUOTIENT`  | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
+| Name                        | Value                                         |
+| --------------------------- | --------------------------------------------- |
+| `SWEEP_THRESHOLD_QUOTIENT`  | `Gwei(2**0 * 10**9)` (= 1,000,000,000)        |
+| `MIN_SWEEP_THRESHOLD`       | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
 
 ## Preset
 
@@ -405,7 +406,7 @@ def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_
     if threshold % SWEEP_THRESHOLD_QUOTIENT != 0:
         return
     
-    if MIN_ACTIVATION_BALANCE <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
+    if MIN_SWEEP_THRESHOLD <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
         # Set custom sweep threshold
         state.validator_sweep_thresholds[index] = threshold
 ```
