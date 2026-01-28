@@ -26,7 +26,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
-      - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
+      - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Operations](#operations)
@@ -57,7 +57,6 @@ This document specifies the beacon chain changes required to support these custo
 
 | Name                        | Value                                         |
 | --------------------------- | --------------------------------------------- |
-| `SWEEP_THRESHOLD_QUOTIENT`  | `Gwei(2**0 * 10**9)` (= 1,000,000,000)        |
 | `MIN_SWEEP_THRESHOLD`       | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
 
 ## Preset
@@ -114,11 +113,13 @@ class BeaconState(Container):
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
+    builders: List[Builder, BUILDER_REGISTRY_LIMIT]
+    next_withdrawal_builder_index: BuilderIndex
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
     latest_block_hash: Hash32
-    latest_withdrawals_root: Root
+    payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in EIPXXXX]
     validator_sweep_thresholds: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
 ```
@@ -236,92 +237,33 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 #### Withdrawals
 
-##### Modified `get_expected_withdrawals`
+##### Modified `get_validators_sweep_withdrawals`
 
-*Note*: The function `get_expected_withdrawals` is modified to support EIPXXXX.
+*Note*: The function `get_validators_sweep_withdrawals` is modified to support EIPXXXX.
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64, uint64]:
+def get_validators_sweep_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     epoch = get_current_epoch(state)
-    withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
+    validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    # There must be at least one space reserved for validator sweep withdrawals
+    assert len(prior_withdrawals) < withdrawals_limit
+
+    processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
-    processed_partial_withdrawals_count = 0
-    processed_builder_withdrawals_count = 0
-
-    # [New in Gloas:EIP7732]
-    # Sweep for builder payments
-    for withdrawal in state.builder_pending_withdrawals:
-        if (
-            withdrawal.withdrawable_epoch > epoch
-            or len(withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
-        ):
-            break
-        if is_builder_payment_withdrawable(state, withdrawal):
-            total_withdrawn = sum(
-                w.amount for w in withdrawals if w.validator_index == withdrawal.builder_index
-            )
-            balance = state.balances[withdrawal.builder_index] - total_withdrawn
-            builder = state.validators[withdrawal.builder_index]
-            if builder.slashed:
-                withdrawable_balance = min(balance, withdrawal.amount)
-            elif balance > MIN_ACTIVATION_BALANCE:
-                withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            else:
-                withdrawable_balance = 0
-
-            if withdrawable_balance > 0:
-                withdrawals.append(
-                    Withdrawal(
-                        index=withdrawal_index,
-                        validator_index=withdrawal.builder_index,
-                        address=withdrawal.fee_recipient,
-                        amount=withdrawable_balance,
-                    )
-                )
-                withdrawal_index += WithdrawalIndex(1)
-        processed_builder_withdrawals_count += 1
-
-    # Sweep for pending partial withdrawals
-    bound = min(
-        len(withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
-        MAX_WITHDRAWALS_PER_PAYLOAD - 1,
-    )
-    for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == bound:
+    validator_index = state.next_withdrawal_validator_index
+    for _ in range(validators_limit):
+        all_withdrawals = prior_withdrawals + withdrawals
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
+        if has_reached_limit:
             break
 
-        validator = state.validators[withdrawal.validator_index]
-        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        total_withdrawn = sum(
-            w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index
-        )
-        balance = state.balances[withdrawal.validator_index] - total_withdrawn
-        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-        if (
-            validator.exit_epoch == FAR_FUTURE_EPOCH
-            and has_sufficient_effective_balance
-            and has_excess_balance
-        ):
-            withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            withdrawals.append(
-                Withdrawal(
-                    index=withdrawal_index,
-                    validator_index=withdrawal.validator_index,
-                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=withdrawable_balance,
-                )
-            )
-            withdrawal_index += WithdrawalIndex(1)
-
-        processed_partial_withdrawals_count += 1
-
-    # Sweep for remaining.
-    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
-    for _ in range(bound):
         validator = state.validators[validator_index]
-        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
-        balance = state.balances[validator_index] - total_withdrawn
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
         # [New in EIPXXXX]
         sweep_threshold = state.validator_sweep_thresholds[validator_index]
         if is_fully_withdrawable_validator(validator, balance, epoch):
@@ -346,14 +288,11 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
+
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-    return (
-        withdrawals,
-        processed_builder_withdrawals_count,
-        processed_partial_withdrawals_count,
-    )
+        processed_count += 1
+
+    return withdrawals, withdrawal_index, processed_count
 ```
 
 #### Operations
@@ -373,21 +312,17 @@ def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_
     validator = state.validators[index]
 
     # Verify withdrawal credentials
-    has_correct_credential = has_execution_withdrawal_credential(validator)
+    # Only allow setting sweep threshold with compounding withdrawal credentials
+    has_correct_credential = has_compounding_withdrawal_credential(validator)
+    # Ensure that the source address matches the withdrawal credentials
     is_correct_source_address = (
         validator.withdrawal_credentials[12:] == set_sweep_threshold_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
-    # Verify the validator is active
-    if not is_active_validator(validator, get_current_epoch(state)):
-        return
+
     # Verify exit has not been initiated
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        return
-
-    # Only allow setting sweep threshold with compounding withdrawal credentials
-    if not has_compounding_withdrawal_credential(validator):
         return
 
     if threshold == 0 or threshold == MAX_EFFECTIVE_BALANCE_ELECTRA:
@@ -402,8 +337,8 @@ def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_
     if threshold < state.balances[index]:
         return
 
-    # Ensure threshold is a multiple of the quotient
-    if threshold % SWEEP_THRESHOLD_QUOTIENT != 0:
+    # Ensure threshold is a multiple of the EFFECTIVE_BALANCE_INCREMENT
+    if threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
     
     if MIN_SWEEP_THRESHOLD <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
