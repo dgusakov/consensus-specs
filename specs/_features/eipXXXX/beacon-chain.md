@@ -386,8 +386,8 @@ def process_execution_payload(
     assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
-    # Verify the withdrawals root
-    assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
     # Verify the gas_limit
     assert committed_bid.gas_limit == payload.gas_limit
@@ -430,10 +430,6 @@ def process_execution_payload(
     payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
     amount = payment.withdrawal.amount
     if amount > 0:
-        exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
-        payment.withdrawal.withdrawable_epoch = Epoch(
-            exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        )
         state.builder_pending_withdrawals.append(payment.withdrawal)
     state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
         BuilderPendingPayment()
