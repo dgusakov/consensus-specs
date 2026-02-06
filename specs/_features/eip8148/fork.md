@@ -1,4 +1,4 @@
-# EIPXXXX -- Fork Logic
+# EIP8148 -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -6,13 +6,13 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to EIPXXXX](#fork-to-eipxxxx)
+- [Fork to eip8148](#fork-to-eip8148)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the process of the EIPXXXX upgrade.
+This document describes the process of the eip8148 upgrade.
 
 ## Configuration
 
@@ -20,17 +20,17 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIPXXXX_FORK_VERSION` | `Version('0x06000000')` |
-| `EIPXXXX_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `eip8148_FORK_VERSION` | `Version('0x06000000')` |
+| `eip8148_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to EIPXXXX
+## Fork to eip8148
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIPXXXX_FORK_EPOCH`, an irregular state change is made to upgrade to EIPXXXX.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == eip8148_FORK_EPOCH`, an irregular state change is made to upgrade to eip8148.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIPXXXX_FORK_EPOCH * SLOTS_PER_EPOCH`.
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `eip8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 ```python
-def upgrade_to_eipxxxx(pre: gloas.BeaconState) -> BeaconState:
+def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -38,7 +38,7 @@ def upgrade_to_eipxxxx(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIPXXXX_FORK_VERSION,
+            current_version=eip8148_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,
@@ -80,7 +80,7 @@ def upgrade_to_eipxxxx(pre: gloas.BeaconState) -> BeaconState:
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
         latest_block_hash=pre.latest_block_hash,
         latest_withdrawals_root=pre.latest_withdrawals_root,
-        # [New in EIPXXXX]
+        # [New in eip8148]
         validator_sweep_thresholds=[Gwei(0) for _ in range(len(pre.validators))],
     )
 
